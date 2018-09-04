@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 
-import sys
 import xml.dom.minidom
+
+from optparse import OptionParser
 
 
 class Element(object):
@@ -68,5 +69,34 @@ def _parse_xml(filename):
 
 
 if __name__ == '__main__':
-  objx = _parse_xml(sys.argv[1])
-  print objx.dump()
+  parser = OptionParser('''
+%prog [Option] input.xml output.xml''')
+  group = parser.add_option_group('File options')
+  group.add_option(
+    '-f', '--file',
+    dest='file', metavar='INPUT',
+    help='file to open for sort')
+  group.add_option(
+    '-o', '--output',
+    dest='output', metavar='OUTPUT',
+    help='file to store the sorted xml. stdout will be used if not provided')
+
+  opts, args = parser.parse_args()
+  if not opts.file:
+    if args:
+      opts.file = args.pop(0)
+  if not opts.output:
+    if args:
+      opts.output = args.pop(0)
+
+  if not opts.file:
+    print 'Error: No xml file to sort'
+  else:
+    objx = _parse_xml(opts.file)
+    xml = objx.dump()
+    if not opts.output:
+      print xml
+    else:
+      with open(opts.output, 'w') as fp:
+        fp.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+        fp.write(xml)
