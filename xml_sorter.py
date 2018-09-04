@@ -68,11 +68,15 @@ class Pattern(object):
 
 
 class Element(object):
-  def __init__(self, name, pattern):
+  def __init__(self, name, keep_order, pattern):
     self.name = name
     self.pattern = pattern
+    self.keep_order = keep_order
+
     self.attrs = dict()
-    self.children = list()
+    self.order = list()
+    self.children = dict()
+    self.no_order = list()
 
   def __repr__(self):
     return self.dump()
@@ -84,7 +88,13 @@ class Element(object):
     self.attrs[attr] = value
 
   def child(self, child):
-    self.children.append(child)
+    self.no_order.append(child)
+    if self.keep_order:
+      if child.name not in self.order:
+        self.order.append(child.name)
+        self.children[child.name] = list()
+
+      self.children[child.name].append(child)
 
   def dump(self, indent=''):
     vals = ''
@@ -95,19 +105,28 @@ class Element(object):
       for attr in attrs:
         vals += ' %s="%s"' % (attr, self.attrs[attr])
 
-    if len(self.children) == 0:
+    if len(self.no_order) == 0:
       if self.normal():
         vals += '/>'
     else:
       if self.normal():
         vals += '>\n'
 
-      extra = '  ' if self.normal() else ''
-      for child in self.pattern.sort(self.children):
-        nval = child.dump(indent=indent + extra)
-        if nval:
-          vals += nval
-          vals += '\n'
+      def child_dump(child, eindent):
+        extra = '  ' if self.normal() else ''
+        xml = child.dump(indent=eindent + extra)
+        if xml:
+          return xml + '\n'
+        else:
+          return ''
+
+      if self.keep_order:
+        for order in self.order:
+          for child in self.pattern.sort(self.children[order]):
+            vals += child_dump(child, indent)
+      else:
+        for child in self.pattern.sort(self.no_order):
+          vals += child_dump(child, indent)
 
       if self.normal():
         vals += '</%s>' % self.name
@@ -115,8 +134,8 @@ class Element(object):
     return vals
 
 
-def _handle_node(node, pattern):
-  elem = Element(node.nodeName, pattern)
+def _handle_node(node, keep_order, pattern):
+  elem = Element(node.nodeName, keep_order, pattern)
 
   # hack into minidom.py
   if hasattr(node, '_attrs'):
@@ -124,17 +143,17 @@ def _handle_node(node, pattern):
       elem.attr(attr, node.getAttribute(attr))
 
   for child in node.childNodes:
-    celem = _handle_node(child, pattern)
+    celem = _handle_node(child, keep_order, pattern)
     if celem.normal():
       elem.child(celem)
 
   return elem
 
 
-def _parse_xml(filename, pattern):
+def _parse_xml(filename, keep_order, pattern):
   root = xml.dom.minidom.parse(filename)
 
-  return _handle_node(root, pattern)
+  return _handle_node(root, keep_order, pattern)
 
 
 if __name__ == '__main__':
@@ -145,6 +164,10 @@ if __name__ == '__main__':
     '-p', '--pattern',
     dest='pattern', action='append',
     help='sort pattern like "element:attr1,attr2,..."')
+  group.add_option(
+    '-k', '--keep-element-order',
+    dest='keep_order', action='store_true', default=False,
+    help='keep the occurrence order for elements')
 
   group = parser.add_option_group('File options')
   group.add_option(
@@ -167,7 +190,7 @@ if __name__ == '__main__':
   if not opts.file:
     print 'Error: No xml file to sort'
   else:
-    objx = _parse_xml(opts.file, Pattern(opts.pattern))
+    objx = _parse_xml(opts.file, opts.keep_order, Pattern(opts.pattern))
     xml = objx.dump()
     if not opts.output:
       print xml
