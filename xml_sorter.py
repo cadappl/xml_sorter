@@ -129,7 +129,7 @@ class Element(object):
           vals += child_dump(child, indent)
 
       if self.normal():
-        vals += '</%s>' % self.name
+        vals += '%s</%s>' % (indent, self.name)
 
     return vals
 
