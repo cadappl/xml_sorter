@@ -178,7 +178,7 @@ def _handle_node(node, pattern, keep_order=False, use_group=False):
 
   # hack into minidom.py
   if hasattr(node, '_attrs'):
-    for attr in node._attrs:
+    for attr in node._attrs or list():
       elem.attr(attr, node.getAttribute(attr))
 
   lname, tname, ldata, tdata = '', '', '', ''
