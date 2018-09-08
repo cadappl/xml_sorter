@@ -107,11 +107,11 @@ class Element(object):
     self.children = dict()
     self.no_order = list()
 
-  def __repr__(self):
+  def __str__(self):
     return self.dump()
 
   def normal(self):
-    return True #not self.name.startswith('#')
+    return not self.name.startswith('#')
 
   def attr(self, attr, value):
     self.attrs[attr] = value
@@ -141,34 +141,43 @@ class Element(object):
     elif self.name == '#comment':
       vals = '%s<!--' % indent
 
+    if self.data:
+      if len(vals) and vals[-1] == '\n':
+        vals += '%s%s\n' % (indent, self.data)
+      else:
+        vals += self.data
+
     if len(self.no_order) == 0:
       if self.normal():
         vals += '/>'
+      elif self.name == '#comment':
+        vals += '-->'
     else:
       if self.normal():
         vals += '>\n'
 
+      nindent = indent + ('  ' if self.normal() else '')
       if self.keep_order:
         for order in self.order:
           for child in self.pattern.sort(self.children[order]):
-            vals += child_dump(child, indent + '  ')
+            vals += child_dump(child, nindent)
 
         for groups in self.groups:
           for child in groups:
-            vals += groups.dump(indent + '  ')
+            vals += groups.dump(nindent)
       else:
         for child in self.pattern.sort(self.no_order):
-          vals += child_dump(child, indent + '  ')
+          vals += child_dump(child, nindent)
 
         for groups in self.groups:
           for child in groups:
-            vals += groups.dump(indent + '  ')
-
-      if self.data:
-        vals += '%s%s\n' % (indent, self.data)
+            vals += groups.dump(nindent)
 
       if self.normal():
-        vals += '%s</%s>' % (indent, self.name)
+        if len(vals) and vals[-1] == '\n':
+          vals += '%s</%s>' % (indent, self.name)
+        else:
+          vals += '</%s>' % self.name
       elif self.name == '#comment':
         vals += '-->'
 
