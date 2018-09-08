@@ -80,13 +80,18 @@ class Group(object):
     self.pattern = pattern
     self.elements = list()
 
-  def add(self, elem):
+  def __repr__(self):
+    return self.name
+
+  def child(self, elem):
     self.elements.append(elem)
 
   def dump(self, indent=''):
-    vals = '%s<!-- %s -->\n' % (indent, self.name)
-    for child in self.pattern.sort(self.no_order):
-      vals += child_dump(child, indent)
+    vals = '%s<!--%s-->\n' % (indent, self.name)
+    for elem in self.pattern.sort(self.elements):
+      vals += child_dump(elem, indent)
+
+    return vals
 
 
 class Element(object):
