@@ -254,14 +254,14 @@ if __name__ == '__main__':
       opts.output = args.pop(0)
 
   if not opts.file:
-    print 'Error: No xml file to sort'
+    print('Error: No xml file to sort')
   else:
     objx = _parse_xml(
         opts.file, Pattern(opts.pattern), opts.keep_order, opts.use_group)
 
     xml = objx.dump()
     if not opts.output:
-      print xml
+      print(xml)
     else:
       with open(opts.output, 'w') as fp:
         fp.write('<?xml version="1.0" encoding="UTF-8"?>\n')
