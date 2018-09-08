@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 import xml.dom.minidom
 
 from optparse import OptionParser
@@ -29,7 +28,7 @@ class Pattern(object):
         if name in self.patterns and obj in self.patterns[name]:
           return self.patterns[name].index(obj)
 
-        return sys.maxint
+        return 10000 # sys.maxint is removed for python3
 
       def __init__(this, obj, *args):
         this.obj = obj
