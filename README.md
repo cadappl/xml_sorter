@@ -25,3 +25,7 @@ With the matched pattern for the element `project`
 And with the option `-k`, the occurence order will be kept not to change the XML
 so much. It'll keep the orders of `remote` and `default` in Android
 `default.xml`.
+
+Option `-g` will detect the flags like `@foo(bar)` in the xml comments and
+categorize the elements following the comments as a group for sorting. It'll be
+useful when spliting the xml into several parts with the specific comment lines.
