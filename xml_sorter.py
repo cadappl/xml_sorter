@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import re
 import xml.dom.minidom
 
 from optparse import OptionParser
@@ -162,16 +163,16 @@ class Element(object):
           for child in self.pattern.sort(self.children[order]):
             vals += child_dump(child, nindent)
 
-        for groups in self.groups:
-          for child in groups:
-            vals += groups.dump(nindent)
+        for group in self.pattern.sort(self.groups, 'group'):
+          vals += '\n'
+          vals += group.dump(nindent)
       else:
         for child in self.pattern.sort(self.no_order):
           vals += child_dump(child, nindent)
 
-        for groups in self.groups:
-          for child in groups:
-            vals += groups.dump(nindent)
+        for group in self.pattern.sort(self.groups, 'group'):
+          vals += '\n'
+          vals += group.dump(nindent)
 
       if self.normal():
         if len(vals) and vals[-1] == '\n':
@@ -185,40 +186,36 @@ class Element(object):
 
 
 def _handle_node(node, pattern, keep_order=False, use_group=False):
-  elem = elem2 = Element(node.nodeName, keep_order, pattern)
+  elem = elem2 = Element(node.nodeName, pattern, keep_order)
   if hasattr(node, 'data'):
-    elem.data = node.data
+    elem.data = node.data.strip('\r\n')
 
   # hack into minidom.py
   if hasattr(node, '_attrs'):
     for attr in node._attrs or list():
       elem.attr(attr, node.getAttribute(attr))
 
-  lname, tname, ldata, tdata = '', '', '', ''
   for child in node.childNodes:
-    el = _handle_node(child, pattern, keep_order)
+    el = _handle_node(child, pattern, keep_order, use_group)
 
-    lname, tname = tname, el.name
-    ldata, tdata = tdata, el.data
-    if el.normal()
+    if el.normal():
       elem.child(el)
     elif el.name == '#text':
-      elem.child(el)
-      if not el.data:
-        elem = elem2
-    elif el.name == '#comment' and use_group:
-      if lname == '#text' and ldata == '':
-        elem2 = elem.group(el.data)
+      if el.data.strip():
+        elem.child(el)
+    elif el.name == '#comment':
+      if use_group and re.search(r'@\w+\(.+\)', el.data):
+        elem = elem2.group(el.data)
       else:
         elem.child(el)
 
-  return elem
+  return elem2
 
 
-def _parse_xml(filename, keep_order, pattern):
+def _parse_xml(filename, pattern, keep_order, use_group):
   root = xml.dom.minidom.parse(filename)
 
-  return _handle_node(root, keep_order, pattern)
+  return _handle_node(root, keep_order, pattern, use_group)
 
 
 if __name__ == '__main__':
