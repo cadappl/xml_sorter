@@ -162,17 +162,13 @@ class Element(object):
         for order in self.order:
           for child in self.pattern.sort(self.children[order]):
             vals += child_dump(child, nindent)
-
-        for group in self.pattern.sort(self.groups, 'group'):
-          vals += '\n'
-          vals += group.dump(nindent)
       else:
         for child in self.pattern.sort(self.no_order):
           vals += child_dump(child, nindent)
 
-        for group in self.pattern.sort(self.groups, 'group'):
-          vals += '\n'
-          vals += group.dump(nindent)
+      for group in self.pattern.sort(self.groups, 'group'):
+        vals += '\n'
+        vals += group.dump(nindent)
 
       if self.normal():
         if len(vals) and vals[-1] == '\n':
