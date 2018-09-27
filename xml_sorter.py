@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import contextlib
 import re
+import sys
 import xml.dom.minidom
 
 from optparse import OptionParser
@@ -255,10 +257,20 @@ if __name__ == '__main__':
     objx = _parse_xml(
         opts.file, Pattern(opts.pattern), opts.keep_order, opts.use_group)
 
+    @contextlib.contextmanager
+    def _open(output, mode):
+      if output:
+        fp = open(output, mode)
+      else:
+        fp = sys.stdout
+
+      try:
+        yield fp
+      finally:
+        if fp is not sys.stdout:
+          fp.close()
+
     xml = objx.dump()
-    if not opts.output:
-      print(xml)
-    else:
-      with open(opts.output, 'w') as fp:
-        fp.write('<?xml version="1.0" encoding="UTF-8"?>\n')
-        fp.write(xml)
+    with _open(opts.output, 'w') as fp:
+      fp.write('<?xml version="1.0" encoding="UTF-8"?>\n')
+      fp.write(xml)
