@@ -221,6 +221,12 @@ def _parse_xml(filename, pattern, keep_order, use_group):
 
 
 if __name__ == '__main__':
+  ANDROID_PATTERN = (
+    "project:path,name,revision,group",
+    "remote:name,fetch,review",
+    "copyfile:src,dest",
+    "linkfile:src,dest")
+
   parser = OptionParser('''
 %prog [Option] input.xml output.xml''')
   group = parser.add_option_group('File options')
@@ -238,6 +244,11 @@ if __name__ == '__main__':
     '-p', '--pattern',
     dest='pattern', action='append',
     help='sort pattern like "element:attr1,attr2,..."')
+  group.add_option(
+    '--android',
+    dest='android', action='store_true',
+    help='set pattern to "project:path,name,revision,group '
+         'remote:name,fetch,review copyfile:src,dest linkfile:src,dest"')
 
   group = parser.add_option_group('Sorting options')
   group.add_option(
@@ -260,6 +271,12 @@ if __name__ == '__main__':
   if not opts.file:
     print('Error: No xml file to sort')
   else:
+    if opts.android:
+      if opts.pattern:
+        opts.pattern.extend(ANDROID_PATTERN)
+      else:
+        opts.pattern = ANDROID_PATTERN
+
     objx = _parse_xml(
         opts.file, Pattern(opts.pattern), opts.keep_order, opts.use_group)
 
