@@ -223,20 +223,6 @@ def _parse_xml(filename, pattern, keep_order, use_group):
 if __name__ == '__main__':
   parser = OptionParser('''
 %prog [Option] input.xml output.xml''')
-  group = parser.add_option_group('Pattern options')
-  group.add_option(
-    '-p', '--pattern',
-    dest='pattern', action='append',
-    help='sort pattern like "element:attr1,attr2,..."')
-  group.add_option(
-    '-k', '--keep-element-order',
-    dest='keep_order', action='store_true', default=False,
-    help='keep the occurrence order for elements')
-  group.add_option(
-    '-g', '--group',
-    dest='use_group', action='store_true', default=False,
-    help='group the elements with a blank and a comment ahead')
-
   group = parser.add_option_group('File options')
   group.add_option(
     '-f', '--file',
@@ -246,6 +232,22 @@ if __name__ == '__main__':
     '-o', '--output',
     dest='output', metavar='OUTPUT',
     help='file to store the sorted xml. stdout will be used if not provided')
+
+  group = parser.add_option_group('Pattern options')
+  group.add_option(
+    '-p', '--pattern',
+    dest='pattern', action='append',
+    help='sort pattern like "element:attr1,attr2,..."')
+
+  group = parser.add_option_group('Sorting options')
+  group.add_option(
+    '-k', '--keep-element-order',
+    dest='keep_order', action='store_true', default=False,
+    help='keep the occurrence order for elements')
+  group.add_option(
+    '-g', '--group',
+    dest='use_group', action='store_true', default=False,
+    help='group the elements with a blank and a comment ahead')
 
   opts, args = parser.parse_args()
   if not opts.file:
