@@ -5,7 +5,12 @@ import re
 import sys
 import xml.dom.minidom
 
+from collections import namedtuple
 from optparse import OptionParser
+
+
+Options = namedtuple('Options', 'keep_order,use_group,ignore_comment')
+
 
 class Pattern(object):
   def __init__(self, patterns):
@@ -98,7 +103,7 @@ class Group(object):
 
 
 class Element(object):
-  def __init__(self, name, keep_order, pattern):
+  def __init__(self, name, pattern, keep_order):
     self.name = name
     self.pattern = pattern
     self.keep_order = keep_order
@@ -191,8 +196,8 @@ class Element(object):
     return vals
 
 
-def _handle_node(node, pattern, keep_order=False, use_group=False):
-  elem = elem2 = Element(node.nodeName, pattern, keep_order)
+def _handle_node(node, options, pattern):
+  elem = elem2 = Element(node.nodeName, pattern, options.keep_order)
   if hasattr(node, 'data'):
     elem.data = node.data.strip('\r\n')
 
@@ -202,7 +207,7 @@ def _handle_node(node, pattern, keep_order=False, use_group=False):
       elem.attr(attr, node.getAttribute(attr))
 
   for child in node.childNodes:
-    el = _handle_node(child, pattern, keep_order, use_group)
+    el = _handle_node(child, options, pattern)
 
     if el.normal():
       elem.child(el)
@@ -210,7 +215,7 @@ def _handle_node(node, pattern, keep_order=False, use_group=False):
       if el.data.strip():
         elem.child(el)
     elif el.name == '#comment':
-      if use_group and re.search(r'@\w+\(.+\)', el.data):
+      if options.use_group and re.search(r'@\w+\(.+\)', el.data):
         elem = elem2.group(el.data)
       else:
         elem.child(el)
@@ -218,10 +223,10 @@ def _handle_node(node, pattern, keep_order=False, use_group=False):
   return elem2
 
 
-def _parse_xml(filename, pattern, keep_order, use_group):
+def _parse_xml(filename, pattern, options):
   root = xml.dom.minidom.parse(filename)
 
-  return _handle_node(root, keep_order, pattern, use_group)
+  return _handle_node(root, options, pattern)
 
 
 if __name__ == '__main__':
@@ -282,7 +287,8 @@ if __name__ == '__main__':
         opts.pattern = ANDROID_PATTERN
 
     objx = _parse_xml(
-        opts.file, Pattern(opts.pattern), opts.keep_order, opts.use_group)
+        opts.file, Pattern(opts.pattern),
+        Options(opts.keep_order, opts.use_group))
 
     @contextlib.contextmanager
     def _open(output, mode):
