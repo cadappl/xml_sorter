@@ -247,6 +247,10 @@ if __name__ == '__main__':
     '-o', '--output',
     dest='output', metavar='OUTPUT',
     help='file to store the sorted xml. stdout will be used if not provided')
+  group.add_option(
+    '-i', '--inplace',
+    dest='inplace', action='store_true', default=False,
+    help='update the input file in place instead of an output file')
 
   group = parser.add_option_group('Pattern options')
   group.add_option(
@@ -280,6 +284,13 @@ if __name__ == '__main__':
   if not opts.output:
     if args:
       opts.output = args.pop(0)
+
+  if opts.inplace:
+    if opts.output:
+      print 'Warning: "%s" will be replaced with "%s" in place' % (
+        opts.file, opts.output)
+
+    opts.output = opts.file
 
   if not opts.file:
     print('Error: No xml file to sort')
