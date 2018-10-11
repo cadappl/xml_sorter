@@ -129,9 +129,13 @@ class Element(object):
       self.children[child.name].append(child)
 
   def group(self, name):
-    self.groups.append(Group(name, self.pattern))
+    for group in self.groups:
+      if group.name == name:
+        return group
+    else:
+      self.groups.append(Group(name, self.pattern))
 
-    return self.groups[-1]
+      return self.groups[-1]
 
   def dump(self, indent=''):
     vals = ''
