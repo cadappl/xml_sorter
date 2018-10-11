@@ -217,7 +217,7 @@ def _handle_node(node, options, pattern):
     elif el.name == '#comment':
       if options.use_group and re.search(r'@\w+\(.+\)', el.data):
         elem = elem2.group(el.data)
-      else:
+      elif not options.ignore_comment:
         elem.child(el)
 
   return elem2
@@ -261,6 +261,10 @@ if __name__ == '__main__':
 
   group = parser.add_option_group('Sorting options')
   group.add_option(
+    '-c', '--comment',
+    dest='ignore_comment', action='store_true', default=False,
+    help='ignore the comment elements')
+  group.add_option(
     '-k', '--keep-element-order',
     dest='keep_order', action='store_true', default=False,
     help='keep the occurrence order for elements')
@@ -288,7 +292,7 @@ if __name__ == '__main__':
 
     objx = _parse_xml(
         opts.file, Pattern(opts.pattern),
-        Options(opts.keep_order, opts.use_group))
+        Options(opts.keep_order, opts.use_group,opts.ignore_comment))
 
     @contextlib.contextmanager
     def _open(output, mode):
