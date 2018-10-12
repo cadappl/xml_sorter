@@ -13,7 +13,8 @@ Options = namedtuple('Options', 'keep_order,use_group,ignore_comment')
 
 
 class Pattern(object):
-  def __init__(self, patterns):
+  def __init__(self, patterns, case):
+    self.case = case
     self.patterns = self._split(patterns)
 
   @staticmethod
@@ -45,14 +46,20 @@ class Pattern(object):
       def __lt__(this, other):
         order = this._order(other.obj)
         if order == this.order:
-          return str(this.obj) < str(other.obj)
+          if self.case:
+            return str(this.obj).lower() < str(other.obj).lower()
+          else:
+            return str(this.obj) < str(other.obj)
         else:
           return this.order < order
 
       def __gt__(this, other):
         order = this._order(other.obj)
         if order == this.order:
-          return str(this.obj) > str(other.obj)
+          if self.case:
+            return str(this.obj).lower() > str(other.obj).lower()
+          else:
+            return str(this.obj) > str(other.obj)
         else:
           return this.order > order
 
@@ -265,6 +272,10 @@ if __name__ == '__main__':
 
   group = parser.add_option_group('Sorting options')
   group.add_option(
+    '-C', '--case-insensitive',
+    dest='case', action='store_true', default=False,
+    help='sort with case insenstive comparison')
+  group.add_option(
     '-c', '--comment',
     dest='ignore_comment', action='store_true', default=False,
     help='ignore the comment elements')
@@ -302,8 +313,8 @@ if __name__ == '__main__':
         opts.pattern = ANDROID_PATTERN
 
     objx = _parse_xml(
-        opts.file, Pattern(opts.pattern),
-        Options(opts.keep_order, opts.use_group,opts.ignore_comment))
+        opts.file, Pattern(opts.pattern, opts.case),
+        Options(opts.keep_order, opts.use_group, opts.ignore_comment))
 
     @contextlib.contextmanager
     def _open(output, mode):
