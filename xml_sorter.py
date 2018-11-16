@@ -9,26 +9,42 @@ from collections import namedtuple
 from optparse import OptionParser
 
 
-Options = namedtuple('Options', 'keep_order,use_group,ignore_comment')
+Options = namedtuple(
+  'Options', 'keep_order,use_group,ignore_comment,omit')
 
 
 class Pattern(object):
-  def __init__(self, patterns, case):
+  def __init__(self, patterns, case=True, as_elem=False):
     self.case = case
-    self.patterns = self._split(patterns)
+    self.patterns = self._split(patterns, as_elem)
 
   @staticmethod
-  def _split(patterns):
+  def _split(patterns, as_elem):
     rets = dict()
 
-    for pattern in patterns or list():
+    for pattern in patterns or '':
       if ':' not in pattern:
-        pattern = ':%s' % pattern
+        if as_elem:
+          elem, attrs = pattern, ''
+        else:
+          elem, attrs = '', pattern
+      else:
+        elem, attrs = pattern.split(':')
 
-      elem, attrs = pattern.split(':')
       rets[elem] = attrs.split(',')
 
     return rets
+
+  def has_element_without_attr(self, element):
+    return element in self.patterns and len(self.patterns[element]) == 0
+
+  def has_attr(self, element, attr):
+    attrs = self.patterns.get(element)
+
+    if attrs and attr in attrs:
+      return True
+    else:
+      return False
 
   def cmp_key(self, name):
     class _Cmp(object):
@@ -102,18 +118,22 @@ class Group(object):
     self.elements.append(elem)
 
   def dump(self, indent=''):
-    vals = '%s<!--%s-->\n' % (indent, self.name)
+    vals = ''
     for elem in self.pattern.sort(self.elements):
       vals += child_dump(elem, indent)
 
-    return vals
+    if vals:
+      return '%s<!--%s-->\n%s' % (indent, self.name, vals)
+    else:
+      return ''
 
 
 class Element(object):
-  def __init__(self, name, pattern, keep_order):
+  def __init__(self, name, pattern, keep_order, omit):
     self.name = name
     self.pattern = pattern
     self.keep_order = keep_order
+    self.omit = omit
 
     self.data = ''
     self.attrs = dict()
@@ -151,12 +171,17 @@ class Element(object):
 
   def dump(self, indent=''):
     vals = ''
+
+    if self.omit.has_element_without_attr(self.name):
+      return ''
+
     if self.normal():
       vals = '%s<%s' % (indent, self.name)
 
       attrs = self.pattern.sort(self.attrs, self.name)
       for attr in attrs:
-        vals += ' %s="%s"' % (attr, self.attrs[attr])
+        if not self.omit.has_attr(self.name, attr):
+          vals += ' %s="%s"' % (attr, self.attrs[attr])
     elif self.name == '#comment':
       vals = '%s<!--' % indent
 
@@ -204,7 +229,8 @@ class Element(object):
 
 
 def _handle_node(node, options, pattern):
-  elem = elem2 = Element(node.nodeName, pattern, options.keep_order)
+  elem = elem2 = Element(
+    node.nodeName, pattern, options.keep_order, options.omit)
   if hasattr(node, 'data'):
     elem.data = node.data.strip('\r\n')
 
@@ -244,7 +270,13 @@ if __name__ == '__main__':
     "linkfile:src,dest")
 
   parser = OptionParser('''
-%prog [Option] input.xml output.xml''')
+%prog [Option] input.xml output.xml
+
+It supports the common pattern like element1:attr11,attr12. The comma is
+treated as the separator for attributes. If the element missed, the pattern
+will be effective to all elemenats to order the attributes. But the pattern
+will be handled as element for option "omit".''')
+
   group = parser.add_option_group('File options')
   group.add_option(
     '-f', '--file',
@@ -262,7 +294,7 @@ if __name__ == '__main__':
   group = parser.add_option_group('Pattern options')
   group.add_option(
     '-p', '--pattern',
-    dest='pattern', action='append',
+    dest='pattern', action='append', metavar='PATTERN',
     help='sort pattern like "element:attr1,attr2,..."')
   group.add_option(
     '--android',
@@ -287,6 +319,12 @@ if __name__ == '__main__':
     '-g', '--group',
     dest='use_group', action='store_true', default=False,
     help='group the elements with a blank and a comment ahead')
+
+  group = parser.add_option_group('Other options')
+  group.add_option(
+    '-r', '--remove', '--omit',
+    dest='omit', action='append', metavar='PATTERN',
+    help='omit elements or element attributes during output')
 
   opts, args = parser.parse_args()
   if not opts.file:
@@ -314,7 +352,9 @@ if __name__ == '__main__':
 
     objx = _parse_xml(
         opts.file, Pattern(opts.pattern, opts.case),
-        Options(opts.keep_order, opts.use_group, opts.ignore_comment))
+        Options(
+          opts.keep_order, opts.use_group, opts.ignore_comment,
+          Pattern(opts.omit, as_elem=True)))
 
     @contextlib.contextmanager
     def _open(output, mode):
