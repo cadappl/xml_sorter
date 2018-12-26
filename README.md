@@ -12,15 +12,20 @@ It works only with XML normal elements, comments and common data fields. It
 hasn't supported CDATA, characters, etc. Because it's a specific tool (to
 handle Android `manifest.xml` frankly), new features may not be impelemented.
 
-The tool could be used to sort the elements, and element attributes, for
-example, the attributes of an Android project:
+The tool could be used to sort the elements, and element attributes. The pattern
+has the format `element:attr1,attr2,...`. If element isn't provided, the
+attributes will be effective to all existent elements. For example, the
+attributes of an Android project could be sorted:
 
 `<project groups="pdk" name="platform/art" path="art" revision="refs/tags/android-8.1.0_r43"/>`
 
 With the matched pattern only for the element `project`
-`project:path,name,revision,groups`, the output xml would be:
+`project:path,name,revision,groups`, the output element would be:
 
 `<project path="art" name="platform/art" revision="refs/tags/android-8.1.0_r43" groups="pdk"/>`
+
+The output `project` starting with sorted attribute `path` would be good to
+investigate the directory structures of git-repositories in an Android project.
 
 Option `-C` can do case-insenstive compare of two elements. And with the option
 `-k`, the occurence order will be kept not to change the XML so much. It'll
@@ -33,10 +38,10 @@ useful when spliting the xml into several parts with the specific comment lines.
 A new option "--android" is added to append following patterns for Android
 specific xml file:
 
-- project:path,name,revision,groups
-- remote:name,fetch,review
-- copyfile:src,dest
-- linkfile:src,dest
+- `project:path,name,revision,groups`
+- `remote:name,fetch,review`
+- `copyfile:src,dest`
+- `linkfile:src,dest`
 
 To handle the Android xml file, the command link could be:
 
@@ -44,3 +49,10 @@ To handle the Android xml file, the command link could be:
 $ xml_sorter.py -C -k --android -f default.xml -o sorted.xml
 ```
 
+The option '-o' would be ignored if option '-i' is used to update the xml file
+in place.
+
+What's more. An extra option `-r` (`--omit`) has been implemented to omit some
+elmenent or element attributes. The matched pattern are the same like the one
+for sort. The only difference is the pattern will be treated as `element` if no
+colon as the delimiter is provided.
