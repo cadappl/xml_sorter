@@ -16,11 +16,11 @@ Options = namedtuple(
 class Pattern(object):
   def __init__(self, patterns, case=True, as_elem=False):
     self.case = case
-    self.patterns = self._split(patterns, as_elem)
+    self.patterns, self.duplicates = self._split(patterns, as_elem)
 
   @staticmethod
   def _split(patterns, as_elem):
-    rets = dict()
+    pats, dups = dict(), dict()
 
     for pattern in patterns or '':
       if ':' not in pattern:
@@ -31,9 +31,35 @@ class Pattern(object):
       else:
         elem, attrs = pattern.split(':')
 
-      rets[elem] = attrs.split(',')
+      duplicated = False
+      for attr in attrs.split(','):
+        if attr.find('=') > 0:
+          attr1, attr2 = attr.split('=', 1)
+          if elem not in dups:
+            dups[elem] = dict()
 
-    return rets
+          dups[elem][attr1] = attr2
+          duplicated = True
+        else:
+          if elem not in pats:
+            pats[elem] = list()
+
+          pats[elem].append(attr)
+
+      # handles for empty attributes
+      if not duplicated and elem not in pats:
+        pats[elem] = list()
+
+    return pats, dups
+
+  def get_duplicates(self, elem, attr=None):
+    if elem in self.duplicates:
+      if attr:
+        return self.duplicates[elem][attr]
+      else:
+        return self.duplicates[elem]
+    else:
+      return None
 
   def has_element_without_attr(self, element):
     return element in self.patterns and len(self.patterns[element]) == 0
@@ -151,6 +177,12 @@ class Element(object):
   def attr(self, attr, value):
     self.attrs[attr] = value
 
+  def clearify(self, dups):
+    for attr1, attr2 in dups.items():
+      if attr1 in self.attrs and attr2 in self.attrs and \
+          self.attrs[attr1] == self.attrs[attr2]:
+        del self.attrs[attr2]
+
   def child(self, child):
     self.no_order.append(child)
     if self.keep_order:
@@ -228,7 +260,7 @@ class Element(object):
     return vals
 
 
-def _handle_node(node, options, pattern):
+def _handle_node(node, options, duplicates, pattern):
   elem = elem2 = Element(
     node.nodeName, pattern, options.keep_order, options.omit)
   if hasattr(node, 'data'):
@@ -239,8 +271,12 @@ def _handle_node(node, options, pattern):
     for attr in node._attrs or list():
       elem.attr(attr, node.getAttribute(attr))
 
+    dups = duplicates.get_duplicates(elem.name)
+    if dups:
+      elem.clearify(dups)
+
   for child in node.childNodes:
-    el = _handle_node(child, options, pattern)
+    el = _handle_node(child, options, duplicates, pattern)
 
     if el.normal():
       elem.child(el)
@@ -256,10 +292,10 @@ def _handle_node(node, options, pattern):
   return elem2
 
 
-def _parse_xml(filename, pattern, options):
+def _parse_xml(filename, pattern, duplicates, options):
   root = xml.dom.minidom.parse(filename)
 
-  return _handle_node(root, options, pattern)
+  return _handle_node(root, options, duplicates, pattern)
 
 
 if __name__ == '__main__':
@@ -272,8 +308,8 @@ if __name__ == '__main__':
   parser = OptionParser('''
 %prog [Option] input.xml output.xml
 
-It supports the common pattern like element1:attr11,attr12. The comma is
-treated as the separator for attributes. If the element missed, the pattern
+It supports the common pattern like element1:attr11[=attr13],attr12. The comma
+is treated as the separator for attributes. If the element missed, the pattern
 will be effective to all elemenats to order the attributes. But the pattern
 will be handled as element for option "omit".''')
 
@@ -325,6 +361,10 @@ will be handled as element for option "omit".''')
     '-r', '--remove', '--omit',
     dest='omit', action='append', metavar='PATTERN',
     help='omit elements or element attributes during output')
+  group.add_option(
+    '-x', '--suppress-duplicate',
+    dest='duplicates', action='append', metavar='attr1=attr2',
+    help='remove attr2 if value of attr2 is equaling to attr1')
 
   opts, args = parser.parse_args()
   if not opts.file:
@@ -351,10 +391,12 @@ will be handled as element for option "omit".''')
         opts.pattern = ANDROID_PATTERN
 
     objx = _parse_xml(
-        opts.file, Pattern(opts.pattern, opts.case),
-        Options(
-          opts.keep_order, opts.use_group, opts.ignore_comment,
-          Pattern(opts.omit, as_elem=True)))
+      opts.file,
+      Pattern(opts.pattern, opts.case),
+      Pattern(opts.duplicates),
+      Options(
+        opts.keep_order, opts.use_group, opts.ignore_comment,
+        Pattern(opts.omit, as_elem=True)))
 
     @contextlib.contextmanager
     def _open(output, mode):
