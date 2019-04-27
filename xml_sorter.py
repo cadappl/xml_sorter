@@ -301,6 +301,7 @@ def _parse_xml(filename, pattern, duplicates, options):
 if __name__ == '__main__':
   ANDROID_PATTERN = (
     "project:path,name,revision,group",
+    "default:remote,revision",
     "remote:name,fetch,review",
     "copyfile:src,dest",
     "linkfile:src,dest")
