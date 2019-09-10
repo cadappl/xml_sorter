@@ -300,11 +300,13 @@ def _parse_xml(filename, pattern, duplicates, options):
 
 if __name__ == '__main__':
   ANDROID_PATTERN = (
-    "project:path,name,revision,group",
     "default:remote,revision",
-    "remote:name,fetch,review",
+    "project:path,name,revision,group",
     "copyfile:src,dest",
-    "linkfile:src,dest")
+    "linkfile:src,dest",
+    "remote:name,fetch,review",
+    "repo-hooks:in-project,enable-list"
+  )
 
   parser = OptionParser('''
 %prog [Option] input.xml output.xml
