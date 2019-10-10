@@ -3,6 +3,7 @@
 import contextlib
 import re
 import sys
+import textwrap
 import xml.dom.minidom
 
 from collections import namedtuple
@@ -10,7 +11,7 @@ from optparse import OptionParser
 
 
 Options = namedtuple(
-  'Options', 'keep_order,use_group,ignore_comment,omit')
+  'Options', 'keep_order,use_group,ignore_comment,width,omit')
 
 
 class Pattern(object):
@@ -155,11 +156,12 @@ class Group(object):
 
 
 class Element(object):
-  def __init__(self, name, pattern, keep_order, omit):
+  def __init__(self, name, pattern, keep_order, omit, width=0):
     self.name = name
     self.pattern = pattern
     self.keep_order = keep_order
     self.omit = omit
+    self.width = width
 
     self.data = ''
     self.attrs = dict()
@@ -218,10 +220,14 @@ class Element(object):
       vals = '%s<!--' % indent
 
     if self.data:
-      if len(vals) and vals[-1] == '\n':
-        vals += '%s%s\n' % (indent, self.data)
+      if self.width and self.name != '#comment':
+        width = self.width - len(indent) if self.width > len(indent) else 40
+        for line in textwrap.wrap(self.data.strip(), width=width):
+          vals += '%s%s\n' % (indent, line)
       else:
-        vals += self.data
+        vals += '%s%s\n' % (indent, self.data)
+
+      vals = vals.rstrip()
 
     if len(self.no_order) == 0:
       if self.normal():
@@ -262,7 +268,7 @@ class Element(object):
 
 def _handle_node(node, options, duplicates, pattern):
   elem = elem2 = Element(
-    node.nodeName, pattern, options.keep_order, options.omit)
+    node.nodeName, pattern, options.keep_order, options.omit, options.width)
   if hasattr(node, 'data'):
     elem.data = node.data.strip('\r\n')
 
@@ -359,6 +365,11 @@ will be handled as element for option "omit".''')
     dest='use_group', action='store_true', default=False,
     help='group the elements with a blank and a comment ahead')
 
+  group = parser.add_option_group('Format options')
+  group.add_option(
+    '-L', '--width',
+    dest='width', action='store', type='int', default=0,
+    help='format xml data to the limited length')
   group = parser.add_option_group('Other options')
   group.add_option(
     '-r', '--remove', '--omit',
@@ -379,8 +390,8 @@ will be handled as element for option "omit".''')
 
   if opts.inplace:
     if opts.output:
-      print 'Warning: "%s" will be replaced with "%s" in place' % (
-        opts.file, opts.output)
+      print('Warning: "%s" will be replaced with "%s" in place' % (
+        opts.file, opts.output))
 
     opts.output = opts.file
 
@@ -398,7 +409,7 @@ will be handled as element for option "omit".''')
       Pattern(opts.pattern, opts.case),
       Pattern(opts.duplicates),
       Options(
-        opts.keep_order, opts.use_group, opts.ignore_comment,
+        opts.keep_order, opts.use_group, opts.ignore_comment, opts.width,
         Pattern(opts.omit, as_elem=True)))
 
     @contextlib.contextmanager
